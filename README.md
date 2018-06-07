@@ -1,13 +1,13 @@
 # Naive Bayes Document Classifier 
 
-## install env
+#### install env
 ```
 $ virtualenv -p python3 venv
 $ source venv/bin/activate
 $ pip install -r requirements.txt
 ```
 
-## sample usage
+#### sample usage
 ```
 from pprint import pprint
 from classifier.NaiveBayesClassifier import NaiveBayesClassifier
