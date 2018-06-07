@@ -2,11 +2,8 @@
 Document Classifier Bahasa Indonesia menggunakan Naive Bayes Classifier
 
 
-
-```
 sample usage
-
-
+```
 from pprint import pprint
 from classifier.NaiveBayesClassifier import NaiveBayesClassifier
 
