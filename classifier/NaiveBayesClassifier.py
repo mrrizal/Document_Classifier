@@ -1,8 +1,9 @@
 import re
 import json
+import pickle
+from math import exp
 from pprint import pprint
 from random import shuffle
-from string import punctuation
 from collections import Counter
 
 
@@ -12,6 +13,24 @@ class NaiveBayesClassifier(object):
     def __init__(self):
         with open('stopwords_id.txt', 'r') as output_file:
             self.stopwords_id = output_file.read().split()
+
+        try:
+            self.prior_prob = pickle.load(open('prior_prob.pickle', 'rb'))
+        except Exception:
+            self.prior_prob = None
+
+        try:
+            self.word_prob = pickle.load(open('word_prob.pickle', 'rb'))
+        except Exception:
+            self.word_prob = None
+
+        try:
+            self.total_word = pickle.load(open('total_word.pickle', 'rb'))
+        except Exception:
+            self.total_word = None
+
+        if self.prior_prob is not None:
+            self.kategories = list(self.prior_prob.keys())
 
     def split_dataset(self, data, ratio=0.80):
         shuffle(data)
@@ -45,36 +64,93 @@ class NaiveBayesClassifier(object):
             result[key] = dict(Counter(temp))
         return result
 
-    def get_cond_prob(self, data):
+    def get_word_prob(self, data):
         result = {}
+        total_word = {}
         for key, value in data.items():
             total = sum([v for v in value.values()])
+            total_word[key] = total
             cond_prob = {k: v / total for k, v in value.items()}
             result[key] = cond_prob
 
-        return result
+        return result, total_word
 
     def get_prior_prob(self, data_train):
         total = sum([len(value) for value in data_train.values()])
         prior_prob = {k: len(v) / total for k, v in data_train.items()}
         return prior_prob
 
+    def get_dataset(self, kategories=['bisnis', 'sains', 'sport']):
+        self.data_train = {}
+        self.data_test = {}
+        for kategori in kategories:
+            with open('../crawler/{}_content.json'.format(kategori),
+                      'r') as output_file:
+                data = json.loads(output_file.read())
+                temp_data_train, temp_data_test = self.split_dataset(data)
+                self.data_train[kategori] = temp_data_train
+                self.data_test[kategori] = temp_data_test
+
+        return self.data_train, self.data_test
+
+    def train(self, data_train):
+        prior_prob = classifier.get_prior_prob(data_train)
+        tf = classifier.get_tf(data_train)
+        word_prob, total_word = classifier.get_word_prob(tf)
+
+        pickle.dump(total_word, open('total_word.pickle', 'wb'))
+        pickle.dump(prior_prob, open('prior_prob.pickle', 'wb'))
+        pickle.dump(word_prob, open('word_prob.pickle', 'wb'))
+
+    def classifier(self, text):
+        words = self.tokenize(text)
+        words = self.cleaning_words(words)
+        result = {}
+        evidence = 0
+        for i in self.kategories:
+            result[i] = {'prior_prob': self.prior_prob[i]}
+            cond_prob = 0
+            for word in words:
+                if word in self.word_prob[i]:
+                    cond_prob += exp(self.word_prob[i][word])
+                else:
+                    cond_prob += exp(1 / self.total_word[i])
+
+            result[i]['cond_prob'] = cond_prob
+            result[i]['posterior_prob'] = exp(
+                result[i]['prior_prob']) + result[i]['cond_prob']
+            evidence += result[i]['posterior_prob']
+
+        temp = 0
+        label = None
+        for i in self.kategories:
+            result[i]['result'] = result[i]['posterior_prob'] / evidence
+            if result[i]['result'] > temp:
+                temp = result[i]['result']
+                label = i
+
+        return {'text': text, 'label': label}
+
+    def evaluate(self, data_test):
+        result = {}
+        for i in self.kategories:
+            result[i] = {'total_artikel': len(datatest[i])}
+            result[i]['predict_artikel'] = {'benar': 0, 'salah': 0}
+            for j in datatest[i]:
+                temp = self.classifier(j['content'])['label']
+                if temp == i:
+                    result[i]['predict_artikel']['benar'] += 1
+                else:
+                    result[i]['predict_artikel']['salah'] += 1
+
+            result[i]['percent'] = result[i]['predict_artikel'][
+                'benar'] / result[i]['total_artikel']
+
+        return result
+
 
 if __name__ == '__main__':
-    data_train = {}
-    data_test = {}
     classifier = NaiveBayesClassifier()
-    for kategori in ['bisnis', 'sains', 'sport']:
-        # for kategori in ['bisnis']:
-        with open('../crawler/{}_content.json'.format(kategori),
-                  'r') as output_file:
-            data = json.loads(output_file.read())
-            temp_data_train, temp_data_test = classifier.split_dataset(data)
-            data_train[kategori] = temp_data_train
-            data_test[kategori] = temp_data_test
-
-    # text = "bandung kota kembang yang indah. saya akan mengerjakan tugas dengan rajin"
-    # print(classifier.tokenize(text))
-    prior_prob = classifier.get_prior_prob(data_train)
-    tf = classifier.get_tf(data_train)
-    cond_prob = classifier.get_cond_prob(tf)
+    datatrain, datatest = classifier.get_dataset()
+    classifier.train(datatrain)
+    pprint(classifier.evaluate(datatest))

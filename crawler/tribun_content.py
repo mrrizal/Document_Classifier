@@ -1,8 +1,6 @@
 import re
 import json
-import time
 import requests
-from pprint import pprint
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 

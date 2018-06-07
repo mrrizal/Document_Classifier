@@ -1,7 +1,6 @@
 import json
 import requests
 import datetime
-from pprint import pprint
 from bs4 import BeautifulSoup
 
 
@@ -36,7 +35,7 @@ def get_url(kategori):
             if len(result) < 500:
                 date = date - datetime.timedelta(1)
             else:
-                berenti = True
+                stop = True
                 break
 
     return result
