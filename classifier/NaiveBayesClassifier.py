@@ -1,6 +1,9 @@
 import re
+import os
+import sys
 import json
 import pickle
+import inspect
 from math import exp
 from pprint import pprint
 from random import shuffle
@@ -11,26 +14,19 @@ class NaiveBayesClassifier(object):
     """NaiveBayesClassifier"""
 
     def __init__(self):
-        with open('stopwords_id.txt', 'r') as output_file:
+        currentdir = os.path.dirname(
+            os.path.abspath(inspect.getfile(inspect.currentframe())))
+        self.path = os.path.dirname(currentdir)
+        with open('{}/classifier/stopwords_id.txt'.format(self.path),
+                  'r') as output_file:
             self.stopwords_id = output_file.read().split()
-
-        try:
-            self.prior_prob = pickle.load(open('prior_prob.pickle', 'rb'))
-        except Exception:
-            self.prior_prob = None
-
-        try:
-            self.word_prob = pickle.load(open('word_prob.pickle', 'rb'))
-        except Exception:
-            self.word_prob = None
-
-        try:
-            self.total_word = pickle.load(open('total_word.pickle', 'rb'))
-        except Exception:
-            self.total_word = None
-
-        if self.prior_prob is not None:
-            self.kategories = list(self.prior_prob.keys())
+        self.prior_prob = pickle.load(
+            open('{}/classifier/prior_prob.pickle'.format(self.path), 'rb'))
+        self.word_prob = pickle.load(
+            open('{}/classifier/word_prob.pickle'.format(self.path), 'rb'))
+        self.total_word = pickle.load(
+            open('{}/classifier/total_word.pickle'.format(self.path), 'rb'))
+        self.kategories = list(self.prior_prob.keys())
 
     def split_dataset(self, data, ratio=0.80):
         shuffle(data)
@@ -84,7 +80,7 @@ class NaiveBayesClassifier(object):
         self.data_train = {}
         self.data_test = {}
         for kategori in kategories:
-            with open('../crawler/{}_content.json'.format(kategori),
+            with open('{}/crawler/{}_content.json'.format(self.path, kategori),
                       'r') as output_file:
                 data = json.loads(output_file.read())
                 temp_data_train, temp_data_test = self.split_dataset(data)
@@ -94,13 +90,19 @@ class NaiveBayesClassifier(object):
         return self.data_train, self.data_test
 
     def train(self, data_train):
-        prior_prob = classifier.get_prior_prob(data_train)
-        tf = classifier.get_tf(data_train)
-        word_prob, total_word = classifier.get_word_prob(tf)
+        prior_prob = self.get_prior_prob(data_train)
+        tf = self.get_tf(data_train)
+        word_prob, total_word = self.get_word_prob(tf)
 
-        pickle.dump(total_word, open('total_word.pickle', 'wb'))
-        pickle.dump(prior_prob, open('prior_prob.pickle', 'wb'))
-        pickle.dump(word_prob, open('word_prob.pickle', 'wb'))
+        pickle.dump(total_word,
+                    open('{}/classifier/total_word.pickle'.format(self.path),
+                         'wb'))
+        pickle.dump(prior_prob,
+                    open('{}/classifier/prior_prob.pickle'.format(self.path),
+                         'wb'))
+        pickle.dump(word_prob,
+                    open('{}/classifier/word_prob.pickle'.format(self.path),
+                         'wb'))
 
     def classifier(self, text):
         words = self.tokenize(text)
@@ -134,9 +136,9 @@ class NaiveBayesClassifier(object):
     def evaluate(self, data_test):
         result = {}
         for i in self.kategories:
-            result[i] = {'total_artikel': len(datatest[i])}
+            result[i] = {'total_artikel': len(data_test[i])}
             result[i]['predict_artikel'] = {'benar': 0, 'salah': 0}
-            for j in datatest[i]:
+            for j in data_test[i]:
                 temp = self.classifier(j['content'])['label']
                 if temp == i:
                     result[i]['predict_artikel']['benar'] += 1
