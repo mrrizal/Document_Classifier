@@ -19,13 +19,19 @@ class NaiveBayesClassifier(object):
         with open('{}/classifier/stopwords_id.txt'.format(self.path),
                   'r') as output_file:
             self.stopwords_id = output_file.read().split()
-        self.prior_prob = pickle.load(
-            open('{}/classifier/prior_prob.pickle'.format(self.path), 'rb'))
-        self.word_prob = pickle.load(
-            open('{}/classifier/word_prob.pickle'.format(self.path), 'rb'))
-        self.total_word = pickle.load(
-            open('{}/classifier/total_word.pickle'.format(self.path), 'rb'))
-        self.kategories = list(self.prior_prob.keys())
+
+        try:
+            self.prior_prob = pickle.load(
+                open('{}/classifier/prior_prob.pickle'.format(self.path),
+                     'rb'))
+            self.tf = pickle.load(
+                open('{}/classifier/tf.pickle'.format(self.path), 'rb'))
+            self.total_word = pickle.load(
+                open('{}/classifier/total_word.pickle'.format(self.path),
+                     'rb'))
+            self.kategories = list(self.prior_prob.keys())
+        except Exception:
+            pass
 
     def split_dataset(self, data, ratio=0.80):
         shuffle(data)
@@ -59,16 +65,13 @@ class NaiveBayesClassifier(object):
             result[key] = dict(Counter(temp))
         return result
 
-    def get_word_prob(self, data):
-        result = {}
+    def get_total_word(self, data):
         total_word = {}
         for key, value in data.items():
             total = sum([v for v in value.values()])
             total_word[key] = total
-            cond_prob = {k: v / total for k, v in value.items()}
-            result[key] = cond_prob
 
-        return result, total_word
+        return total_word
 
     def get_prior_prob(self, data_train):
         total = sum([len(value) for value in data_train.values()])
@@ -91,7 +94,7 @@ class NaiveBayesClassifier(object):
     def train(self, data_train):
         prior_prob = self.get_prior_prob(data_train)
         tf = self.get_tf(data_train)
-        word_prob, total_word = self.get_word_prob(tf)
+        total_word = self.get_total_word(tf)
 
         pickle.dump(total_word,
                     open('{}/classifier/total_word.pickle'.format(self.path),
@@ -99,9 +102,8 @@ class NaiveBayesClassifier(object):
         pickle.dump(prior_prob,
                     open('{}/classifier/prior_prob.pickle'.format(self.path),
                          'wb'))
-        pickle.dump(word_prob,
-                    open('{}/classifier/word_prob.pickle'.format(self.path),
-                         'wb'))
+        pickle.dump(tf, open('{}/classifier/tf.pickle'.format(self.path),
+                             'wb'))
 
     def classifier(self, text):
         words = self.tokenize(text)
@@ -112,8 +114,9 @@ class NaiveBayesClassifier(object):
             result[i] = {'prior_prob': self.prior_prob[i]}
             cond_prob = 0
             for word in words:
-                if word in self.word_prob[i]:
-                    cond_prob += exp(self.word_prob[i][word])
+                if word in self.tf[i]:
+                    word_prob = (self.tf[i][word] + 1) / self.total_word[i]
+                    cond_prob += exp(word_prob)
                 else:
                     cond_prob += exp(1 / self.total_word[i])
 
