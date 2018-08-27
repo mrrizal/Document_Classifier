@@ -4,6 +4,7 @@ import json
 import pickle
 import inspect
 from math import exp
+from math import log
 from pprint import pprint
 from random import shuffle
 from collections import Counter
@@ -28,6 +29,9 @@ class NaiveBayesClassifier(object):
                 open('{}/classifier/tf.pickle'.format(self.path), 'rb'))
             self.total_word = pickle.load(
                 open('{}/classifier/total_word.pickle'.format(self.path),
+                     'rb'))
+            self.total_vocabulary = pickle.load(
+                open('{}/classifier/total_vocabulary.pickle'.format(self.path),
                      'rb'))
             self.kategories = list(self.prior_prob.keys())
         except Exception:
@@ -67,11 +71,13 @@ class NaiveBayesClassifier(object):
 
     def get_total_word(self, data):
         total_word = {}
+        total_vocabulary = []
         for key, value in data.items():
             total = sum([v for v in value.values()])
+            total_vocabulary += [v for v in value.keys()]
             total_word[key] = total
 
-        return total_word
+        return total_word, len(list(set(total_vocabulary)))
 
     def get_prior_prob(self, data_train):
         total = sum([len(value) for value in data_train.values()])
@@ -94,11 +100,14 @@ class NaiveBayesClassifier(object):
     def train(self, data_train):
         prior_prob = self.get_prior_prob(data_train)
         tf = self.get_tf(data_train)
-        total_word = self.get_total_word(tf)
+        total_word, total_vocabulary = self.get_total_word(tf)
 
         pickle.dump(total_word,
                     open('{}/classifier/total_word.pickle'.format(self.path),
                          'wb'))
+        pickle.dump(total_vocabulary,
+                    open('{}/classifier/total_vocabulary.pickle'.format(
+                        self.path), 'wb'))
         pickle.dump(prior_prob,
                     open('{}/classifier/prior_prob.pickle'.format(self.path),
                          'wb'))
@@ -115,20 +124,22 @@ class NaiveBayesClassifier(object):
             cond_prob = 0
             for word in words:
                 if word in self.tf[i]:
-                    word_prob = (self.tf[i][word] + 1) / self.total_word[i]
-                    cond_prob += exp(word_prob)
+                    word_prob = (self.tf[i][word] + 1) / (
+                        self.total_word[i] + self.total_vocabulary)
+                    cond_prob += log(word_prob)
                 else:
-                    cond_prob += exp(1 / self.total_word[i])
+                    cond_prob += log(
+                        1 / (self.total_word[i] + self.total_vocabulary))
 
             result[i]['cond_prob'] = cond_prob
-            result[i]['posterior_prob'] = exp(
+            result[i]['posterior_prob'] = log(
                 result[i]['prior_prob']) + result[i]['cond_prob']
             evidence += result[i]['posterior_prob']
 
         temp = 0
         label = None
         for i in self.kategories:
-            result[i]['result'] = result[i]['posterior_prob'] / evidence
+            result[i]['result'] = result[i]['posterior_prob'] - evidence
             if result[i]['result'] > temp:
                 temp = result[i]['result']
                 label = i
