@@ -3,7 +3,6 @@ import os
 import json
 import pickle
 import inspect
-from math import exp
 from math import log
 from pprint import pprint
 from random import shuffle
