@@ -132,14 +132,14 @@ class NaiveBayesClassifier(object):
 
             result[i]['cond_prob'] = cond_prob
             result[i]['posterior_prob'] = log(
-                result[i]['prior_prob']) + result[i]['cond_prob']
+                result[i]['prior_prob']) * result[i]['cond_prob']
             evidence += result[i]['posterior_prob']
 
         temp = 0
         label = None
         for i in self.kategories:
             result[i]['result'] = result[i]['posterior_prob'] - evidence
-            if result[i]['result'] > temp:
+            if result[i]['result'] < temp:
                 temp = result[i]['result']
                 label = i
 
