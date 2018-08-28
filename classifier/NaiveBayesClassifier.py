@@ -83,14 +83,15 @@ class NaiveBayesClassifier(object):
         prior_prob = {k: len(v) / total for k, v in data_train.items()}
         return prior_prob
 
-    def get_dataset(self, kategories=['bisnis', 'sains', 'sport']):
+    def get_dataset(self, kategories=['bisnis', 'sains', 'sport'], ratio=0.80):
         self.data_train = {}
         self.data_test = {}
         for kategori in kategories:
             with open('{}/crawler/{}_content.json'.format(self.path, kategori),
                       'r') as output_file:
                 data = json.loads(output_file.read())
-                temp_data_train, temp_data_test = self.split_dataset(data)
+                temp_data_train, temp_data_test = self.split_dataset(
+                    data, ratio)
                 self.data_train[kategori] = temp_data_train
                 self.data_test[kategori] = temp_data_test
 
