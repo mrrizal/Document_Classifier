@@ -129,7 +129,7 @@ class NaiveBayesClassifier(object):
                     cond_prob += log(word_prob)
                 else:
                     cond_prob += log(
-                        1 / (self.total_word[i] + self.total_vocabulary))
+                        1 / (self.total_word[i] + self.total_vocabulary + 1))
 
             result[i]['cond_prob'] = cond_prob
             result[i]['posterior_prob'] = log(
