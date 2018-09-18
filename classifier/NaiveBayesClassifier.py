@@ -128,8 +128,18 @@ class NaiveBayesClassifier(object):
                         self.total_word[i] + self.total_vocabulary)
                     cond_prob += log(word_prob)
                 else:
-                    cond_prob += log(
-                        1 / (self.total_word[i] + self.total_vocabulary + 1))
+                    unknow_word = True
+                    for j in self.kategories:
+                        if word in self.tf[j]:
+                            unknow_word = False
+                            break
+                    if unknow_word:
+                        cond_prob += log(
+                            1 /
+                            (self.total_word[i] + self.total_vocabulary + 1))
+                    else:
+                        cond_prob += log(
+                            1 / (self.total_word[i] + self.total_vocabulary))
 
             result[i]['cond_prob'] = cond_prob
             result[i]['posterior_prob'] = log(
